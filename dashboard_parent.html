@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Parent Dashboard - Child Safety App</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="sidebar">
+            <div class="user-info">
+                <h2>Welcome, {{ username }}</h2>
+                <p>Parent</p>
+            </div>
+            <ul class="nav">
+                <li><a href="#" onclick="showActivity()">View Child's Activity</a></li>
+                <li><a href="#" onclick="lockDevice()">Lock Device</a></li>
+                <li><a href="#" onclick="sendAlert()">Send Alert</a></li>
+            </ul>
+        </div>
+
+        <div class="main-content">
+            <h1>Parent Dashboard</h1>
+            <div id="child-activity">
+                <h3>Child's Activity Logs</h3>
+                <ul id="activity-list">
+                    <!-- Activities will be dynamically added here using JavaScript -->
+                </ul>
+            </div>
+            
+            <div id="alerts-section" style="display:none;">
+                <h3>Send Alert to Child</h3>
+                <textarea id="alert-message" placeholder="Enter alert message"></textarea>
+                <button onclick="sendAlertMessage()">Send Alert</button>
+                
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+
+</body>
+</html>

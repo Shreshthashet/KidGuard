@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Child Dashboard - Child Safety App</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="sidebar">
+            <div class="user-info">
+                <h2>Welcome, {{ username }}</h2>
+                <p>Child</p>
+            </div>
+            <ul class="nav">
+                <li><a href="#" onclick="showUsage()">View App Usage Insights</a></li>
+                <li><a href="tel:+911234567890" class="emergency-call">Emergency Call</a></li>
+            </ul>
+        </div>
+
+        <div class="main-content">
+            <h1>Child Dashboard</h1>
+            
+            <div id="app-usage">
+                <h3>App Usage Insights</h3>
+                <ul id="usage-list">
+                    <!-- Usage insights will be dynamically loaded here using JavaScript -->
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+
+</body>
+</html>

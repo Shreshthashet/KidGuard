@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Login / Sign Up - Child Safety App</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Embedded CSS -->
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #f9f9f9, #e0f7fa);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .login-container {
+            background-color: white;
+            padding: 30px 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+            width: 90%;
+            max-width: 450px;
+        }
+
+        h2, h3 {
+            text-align: center;
+            color: #00796b;
+        }
+
+        .tab-switch {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+        }
+
+        .tab-button {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            background: #b2dfdb;
+            color: #004d40;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 5px 5px 0 0;
+            transition: background 0.3s ease;
+        }
+
+        .tab-button.active {
+            background: #00796b;
+            color: white;
+        }
+
+        .login-form {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 20px;
+        }
+
+        .login-form input,
+        .login-form select {
+            margin: 8px 0;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+        }
+
+        .login-form button {
+            padding: 10px;
+            background: #00796b;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .login-form button:hover {
+            background: #004d40;
+        }
+
+        .forgot-link {
+            font-size: 0.9em;
+            text-align: right;
+            margin-bottom: 5px;
+            color: #00796b;
+            text-decoration: none;
+        }
+
+        .forgot-link:hover {
+            text-decoration: underline;
+        }
+
+        .back-home {
+            text-align: center;
+            margin-top: 10px;
+        }
+
+        .back-home a {
+            text-decoration: none;
+            color: #00796b;
+            font-weight: bold;
+        }
+
+        .back-home a:hover {
+            text-decoration: underline;
+        }
+    </style>
+
+    <!-- Embedded JavaScript -->
+    <script>
+        function showTab(tab) {
+            document.getElementById('login-tab').style.display = tab === 'login' ? 'block' : 'none';
+            document.getElementById('signup-tab').style.display = tab === 'signup' ? 'block' : 'none';
+            document.getElementById('login-btn').classList.toggle('active', tab === 'login');
+            document.getElementById('signup-btn').classList.toggle('active', tab === 'signup');
+        }
+
+        window.onload = function () {
+            showTab('login'); // default tab
+			if(role==="parent"){
+			window.location.href="dashboard_parent.html";
+			}else{
+			window.location.href="dashboard_child.html";
+        }
+		}
+    </script>
+</head>
+
+<body>
+    <div class="login-container">
+        <h2>Welcome to Child Safety App</h2>
+
+        <div class="tab-switch">
+            <button id="login-btn" class="tab-button active" onclick="showTab('login')">Login</button>
+            <button id="signup-btn" class="tab-button" onclick="showTab('signup')">Sign Up</button>
+        </div>
+
+        <!-- Login Section -->
+        <div id="login-tab">
+            <form action="{{ url_for('login') }}" method="POST" class="login-form">
+                <h3>Login as Parent</h3>
+                <input type="hidden" name="user_type" value="parent">
+                <input type="text" name="username" placeholder="Parent Username" required>
+                <input type="password" name="password" placeholder="Password" required>
+                <a href="#" class="forgot-link">Forgot password?</a>
+                <button type="submit">Login</button>
+            </form>
+
+            <form action="{{ url_for('login') }}" method="POST" class="login-form">
+                <h3>Login as Child</h3>
+                <input type="hidden" name="user_type" value="child">
+                <input type="text" name="username" placeholder="Child Username" required>
+                <input type="password" name="password" placeholder="Password" required>
+                <a href="#" class="forgot-link">Forgot password?</a>
+                <button type="submit">Login</button>
+            </form>
+        </div>
+
+        <!-- Sign Up Section -->
+        <div id="signup-tab" style="display: none;">
+            <form action="/signup" method="POST" class="login-form">
+                <h3>Sign Up (Parent or Child)</h3>
+                <select name="role" required>
+                    <option value="">Select Role</option>
+                    <option value="parent">Parent</option>
+                    <option value="child">Child</option>
+                </select>
+                <input type="text" name="username" placeholder="New Username" required>
+                <input type="password" name="password" placeholder="New Password" required>
+                <button type="submit">Create Account</button>
+            </form>
+        </div>
+
+        <div class="back-home">
+            <a href="home.html">&#8592; Back to Home</a>
+        </div>
+    </div>
+</body>
+</html>
