@@ -1,102 +1,153 @@
-from flask import Flask, render_template, request, redirect, url_for, session, jsonify
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 import sqlite3
-import hashlib
+import re
+from werkzeug.security import generate_password_hash, check_password_hash
+from flask_socketio import SocketIO, emit
+from datetime import datetime
 
-# Initialize Flask app
 app = Flask(__name__)
-app.secret_key = 'your_secret_key'
+app.secret_key = 'your_secret_key_here'
+socketio = SocketIO(app, async_mode='threading')
 
-def get_db_connection():
-    conn = sqlite3.connect('child_safety.db')
-    conn.row_factory = sqlite3.Row
-    return conn
+# --- Initialize Database ---
+def init_db():
+    conn = sqlite3.connect('kidguard.db')
+    c = conn.cursor()
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL,
+            role TEXT NOT NULL CHECK(role IN ('parent', 'child'))
+        )
+    ''')
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS activities (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL,
+            activity TEXT NOT NULL,
+            timestamp TEXT NOT NULL
+        )
+    ''')
+    conn.commit()
+    conn.close()
 
+# --- Routes ---
 @app.route('/')
 def home():
-    # Route for the home page
     return render_template('home.html')
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    # Route for login functionality
     if request.method == 'POST':
-        user_type = request.form.get('user_type')
-        email = request.form.get('email')
-        password = request.form.get('password')
-
-        hashed_password = hashlib.sha256(password.encode()).hexdigest()
-
-        conn = get_db_connection()
-        cursor = conn.cursor()
-
-        if user_type == 'parent':
-            cursor.execute('SELECT * FROM parents WHERE email = ? AND password = ?', (email, hashed_password))
-        else:
-            cursor.execute('SELECT * FROM children WHERE email = ? AND password = ?', (email, hashed_password))
-
-        user = cursor.fetchone()
+        username = request.form['username']
+        password = request.form['password']
+        role = request.form['role']
+        
+        conn = sqlite3.connect('kidguard.db')
+        c = conn.cursor()
+        c.execute('SELECT * FROM users WHERE username = ? AND role = ?', (username, role))
+        user = c.fetchone()
         conn.close()
 
-        if user:
-            session['user_type'] = user_type
-            session['email'] = email
-            session['user_id'] = user['id']
-            return redirect(url_for('dashboard'))
+        if user and check_password_hash(user[2], password):
+            session['user'] = username
+            session['role'] = role
+            if role == 'parent':
+                return redirect(url_for('parent_dashboard'))
+            else:
+                return redirect(url_for('child_dashboard'))
         else:
-            return render_template('login.html', error="Invalid credentials")
-
+            flash('Invalid credentials.')
     return render_template('login.html')
 
-@app.route('/signup', methods=['POST'])
+@app.route('/signup', methods=['GET', 'POST'])
 def signup():
-    # Route for sign-up functionality
-    role = request.form.get('role')
-    email = request.form.get('email')
-    password = request.form.get('password')
+    if request.method == 'POST':
+        username = request.form['username'].strip()
+        password = request.form['password']
+        confirm_password = request.form['confirm_password']
+        role = request.form['role']
 
-    hashed_password = hashlib.sha256(password.encode()).hexdigest()
+        if len(username) < 4:
+            flash('Username must be at least 4 characters.')
+            return redirect(url_for('signup'))
 
-    conn = get_db_connection()
-    cursor = conn.cursor()
+        if password != confirm_password:
+            flash('Passwords do not match.')
+            return redirect(url_for('signup'))
 
-    try:
-        if role == 'parent':
-            cursor.execute('INSERT INTO parents (email, password) VALUES (?, ?)', (email, hashed_password))
-        else:
-            cursor.execute('INSERT INTO children (email, password) VALUES (?, ?)', (email, hashed_password))
-        conn.commit()
-        message = "Signup successful. Please log in."
-    except sqlite3.IntegrityError:
-        message = "Email already exists."
-    except Exception as e:
-        message = f"Error: {str(e)}"
-    finally:
-        conn.close()
+        if len(password) < 8 or not re.search(r"[A-Z]", password) or not re.search(r"[a-z]", password) or not re.search(r"[0-9]", password) or not re.search(r"[!@#$%^&*(),.?\":{}|<>]", password):
+            flash('Password must include uppercase, lowercase, number, and symbol.')
+            return redirect(url_for('signup'))
 
-    return render_template('login.html', message=message)
+        try:
+            hashed_password = generate_password_hash(password)
+            conn = sqlite3.connect('kidguard.db')
+            c = conn.cursor()
+            c.execute('INSERT INTO users (username, password, role) VALUES (?, ?, ?)', (username, hashed_password, role))
+            conn.commit()
+            conn.close()
+            flash('Signup successful! Please login.')
+            return redirect(url_for('login'))
+        except sqlite3.IntegrityError:
+            flash('Username already exists.')
+            return redirect(url_for('signup'))
 
-@app.route('/dashboard')
-def dashboard():
-    if 'user_type' not in session:
+    return render_template('signup.html')
+
+@app.route('/parent_dashboard')
+def parent_dashboard():
+    if 'user' not in session or session['role'] != 'parent':
         return redirect(url_for('login'))
+    return render_template('parent_dashboard.html', username=session['user'])
 
-    if session['user_type'] == 'parent':
-        return render_template('dashboard_parent.html', email=session.get('email'))
-    else:
-        return render_template('dashboard_child.html', email=session.get('email'))
+@app.route('/child_dashboard')
+def child_dashboard():
+    if 'user' not in session or session['role'] != 'child':
+        return redirect(url_for('login'))
+    return render_template('child_dashboard.html', username=session['user'])
 
-@app.route('/api/send-alert', methods=['POST'])
-def api_send_alert():
-    # API route for sending alerts
-    data = request.get_json()
-    message = data.get('message')
-    # Broadcast the message to the child (dummy response here)
-    return jsonify({'success': True, 'message': message})
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('home'))
 
-@app.route('/api/lock-device', methods=['POST'])
-def api_lock_device():
-    # API route for locking the device
-    return jsonify({'success': True})
+# --- API to fetch past activities ---
+@app.route('/fetch_activities')
+def fetch_activities():
+    if 'user' not in session or session['role'] != 'parent':
+        return jsonify([])
+    conn = sqlite3.connect('kidguard.db')
+    c = conn.cursor()
+    c.execute("SELECT username, activity, timestamp FROM activities ORDER BY timestamp DESC")
+    rows = c.fetchall()
+    conn.close()
+    activities = [{'username': row[0], 'activity': row[1], 'timestamp': row[2]} for row in rows]
+    return jsonify(activities)
 
+# --- WebSocket Events ---
+@socketio.on('send_alert')
+def handle_send_alert(data):
+    emit('alert', {'alert': 'Emergency alert from your child!'}, broadcast=True)
+
+@socketio.on('activity')
+def handle_activity(data):
+    username = session.get('user', 'Unknown')
+    activity = data.get('activity', 'Unknown')
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    # Save to database
+    conn = sqlite3.connect('kidguard.db')
+    c = conn.cursor()
+    c.execute("INSERT INTO activities (username, activity, timestamp) VALUES (?, ?, ?)", (username, activity, timestamp))
+    conn.commit()
+    conn.close()
+
+    # Send to all connected parents
+    emit('activity', {'activity': f'{username} is browsing: {activity}', 'timestamp': timestamp}, broadcast=True)
+
+# --- Start ---
 if __name__ == '__main__':
-    app.run(debug=True)
+    init_db()
+    socketio.run(app, debug=True)
